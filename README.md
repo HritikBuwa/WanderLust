@@ -46,83 +46,6 @@ Git Push → Clone → SonarQube Analysis → Quality Gate
 ---
 
 ## 🔁 CI/CD Pipeline
-
-Copy this `Jenkinsfile` to the **root of your repository**.
-
-```groovy
-pipeline {
-    agent any
-
-    environment {
-        SONAR_HOME = tool 'Sonar'   // must match Jenkins → Tools → SonarQube Scanner name
-    }
-
-    stages {
-
-        stage('Clone Code from GitHub') {
-            steps {
-                git url: 'https://github.com/krishnaacharyaa/wanderlust.git',
-                    branch: 'devops'
-            }
-        }
-
-        stage('SonarQube Quality Analysis') {
-            steps {
-                withSonarQubeEnv('Sonar') {   // must match Jenkins → System → SonarQube server name
-                    sh """
-                        ${SONAR_HOME}/bin/sonar-scanner \
-                        -Dsonar.projectName=wanderlust \
-                        -Dsonar.projectKey=wanderlust
-                    """
-                }
-            }
-        }
-
-        stage('OWASP Dependency Check') {
-            steps {
-                dependencyCheck additionalArguments: '--scan ./ --format XML',
-                                odcInstallation: 'dc'
-                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
-            }
-        }
-
-        stage('Sonar Quality Gate') {
-            steps {
-                timeout(time: 2, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: false
-                }
-            }
-        }
-
-        stage('Trivy File System Scan') {
-            steps {
-                sh 'trivy fs --format table -o trivy-fs-report.html .'
-            }
-        }
-
-        stage('Deploy using Docker Compose') {
-            steps {
-                sh 'docker-compose down --remove-orphans || true'
-                sh 'docker-compose up -d --build'
-            }
-        }
-    }
-
-    post {
-        always {
-            archiveArtifacts artifacts: 'trivy-fs-report.html', fingerprint: true
-            archiveArtifacts artifacts: '**/dependency-check-report.xml', fingerprint: true
-        }
-        success {
-            echo 'Pipeline completed. App is live!'
-        }
-        failure {
-            echo 'Pipeline failed. Check the logs above.'
-        }
-    }
-}
-```
-
 ### What Each Stage Does
 
 | # | Stage | Purpose |
@@ -316,7 +239,7 @@ Expected: `15 document(s) imported successfully.`
 4. **Pipeline** — choose one:
 
 **Quick (paste script):**
-- Select `Pipeline script` → paste the Jenkinsfile from above
+- Select `Pipeline script` → paste the Jenkinsfile from repo jenkinpipelinefile
 
 **Recommended (auto-reads from repo):**
 - Select `Pipeline script from SCM`
